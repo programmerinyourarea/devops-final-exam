@@ -16,27 +16,50 @@ pipeline {
   stages {
 
     stage('Deploy to Bare-Metal Target') {
-      steps {
-        dir('target-deploy') {
-          git branch: 'target', url: "${REPO_URL}"
-          sh 'npm install'
-          sh 'npm test'
+  steps {
+    dir('target-deploy') {
+      git branch: 'target', url: "${REPO_URL}"
+      sh 'npm install'
+      sh 'npm test'
 
-          sshagent([SSH_CRED]) {
-            sh """
-              ssh -o StrictHostKeyChecking=no ${TARGET_USER}@${HOST_TARGET} 'mkdir -p ~/${APP_NAME}'
-              scp -o StrictHostKeyChecking=no index.js package.json ${TARGET_USER}@${HOST_TARGET}:~/${APP_NAME}
-              ssh -o StrictHostKeyChecking=no ${TARGET_USER}@${HOST_TARGET} '
-                cd ${APP_NAME} &&
-                npm install &&
-                pkill -f index.js || true &&
-                nohup node index.js > app.log 2>&1 &
-              '
-            """
-          }
-        }
+      sshagent([SSH_CRED]) {
+        sh """
+          ssh -o StrictHostKeyChecking=no ${TARGET_USER}@${HOST_TARGET} 'mkdir -p ~/${APP_NAME}'
+          scp -o StrictHostKeyChecking=no index.js package.json ${TARGET_USER}@${HOST_TARGET}:~/${APP_NAME}/
+        """
+
+        // Create and upload systemd service file
+        sh """
+          ssh -o StrictHostKeyChecking=no ${TARGET_USER}@${HOST_TARGET} 'cat > /etc/systemd/system/myapp.service <<EOF
+          [Unit]
+          Description=My Node.js App
+          After=network.target
+
+          [Service]
+          ExecStart=/usr/bin/node /home/${TARGET_USER}/${APP_NAME}/index.js
+          Restart=always
+          User=${TARGET_USER}
+          Environment=NODE_ENV=production
+          WorkingDirectory=/home/${TARGET_USER}/${APP_NAME}
+
+          [Install]
+          WantedBy=multi-user.target
+          EOF'
+        """
+
+        // Reload systemd, enable and start service
+        sh """
+          ssh -o StrictHostKeyChecking=no ${TARGET_USER}@${HOST_TARGET} '
+            sudo systemctl daemon-reload &&
+            sudo systemctl enable myapp.service &&
+            sudo systemctl restart myapp.service
+          '
+        """
       }
     }
+  }
+}
+
 
     stage('Deploy to Docker Host') {
       steps {
