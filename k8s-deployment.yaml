@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: node-sample-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: node-sample-app
+  template:
+    metadata:
+      labels:
+        app: node-sample-app
+    spec:
+      containers:
+      - name: node-app
+        image: ttl.sh/programmerinyourarea/myapp:2h
+        ports:
+        - containerPort: 4444
