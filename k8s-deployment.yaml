@@ -1,19 +1,12 @@
-apiVersion: apps/v1
+apiVersion: v1
 kind: Pod
 metadata:
   name: myapp
+  labels:
+    app: myapp
 spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: myapp
-  template:
-    metadata:
-      labels:
-        app: myapp
-    spec:
-      containers:
-      - name: myapp
-        image: ttl.sh/programmerinyourarea/myapp:2h
-        ports:
-        - containerPort: 4444
+  containers:
+  - name: myapp
+    image: ttl.sh/programmerinyourarea/myapp:2h
+    ports:
+    - containerPort: 4444
