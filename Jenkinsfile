@@ -4,6 +4,7 @@ pipeline {
   environment {
     APP_NAME = 'node-sample-app'
     PORT = '4444'
+    SSH_CRED = 'jenkins-ssh-key'
     TARGET_USER = 'laborant'
     HOST_TARGET = 'target'
     HOST_DOCKER = 'docker'
@@ -21,11 +22,11 @@ pipeline {
           sh 'npm install'
           sh 'npm test'
 
-          sshagent(['jenkins-ssh-key']) {
+          sshagent([SSH_CRED]) {
             sh """
-              ssh ${TARGET_USER}@${HOST_TARGET} 'mkdir -p ~/${APP_NAME}'
-              scp index.js package.json ${TARGET_USER}@${HOST_TARGET}:~/${APP_NAME}
-              ssh ${TARGET_USER}@${HOST_TARGET} '
+              ssh -o StrictHostKeyChecking=no ${TARGET_USER}@${HOST_TARGET} 'mkdir -p ~/${APP_NAME}'
+              scp -o StrictHostKeyChecking=no index.js package.json ${TARGET_USER}@${HOST_TARGET}:~/${APP_NAME}
+              ssh -o StrictHostKeyChecking=no ${TARGET_USER}@${HOST_TARGET} '
                 cd ${APP_NAME} &&
                 npm install &&
                 pkill -f index.js || true &&
@@ -44,11 +45,11 @@ pipeline {
           sh 'npm install'
           sh 'npm test'
 
-          sshagent(['jenkins-ssh-key']) {
+          sshagent([SSH_CRED]) {
             sh """
-              ssh ${TARGET_USER}@${HOST_DOCKER} 'mkdir -p ~/${APP_NAME}'
-              scp Dockerfile index.js package.json ${TARGET_USER}@${HOST_DOCKER}:~/${APP_NAME}
-              ssh ${TARGET_USER}@${HOST_DOCKER} '
+              ssh -o StrictHostKeyChecking=no ${TARGET_USER}@${HOST_DOCKER} 'mkdir -p ~/${APP_NAME}'
+              scp -o StrictHostKeyChecking=no Dockerfile index.js package.json ${TARGET_USER}@${HOST_DOCKER}:~/${APP_NAME}
+              ssh -o StrictHostKeyChecking=no ${TARGET_USER}@${HOST_DOCKER} '
                 cd ${APP_NAME} &&
                 docker build -t ${APP_NAME}:latest . &&
                 docker rm -f ${APP_NAME} || true &&
@@ -67,17 +68,17 @@ pipeline {
           sh 'npm install'
           sh 'npm test'
 
-          sshagent(['jenkins-ssh-key']) {
+          sshagent([SSH_CRED]) {
             sh """
-              ssh ${TARGET_USER}@${HOST_K8S} 'mkdir -p ~/${APP_NAME}'
-              scp Dockerfile index.js package.json ${TARGET_USER}@${HOST_K8S}:~/${APP_NAME}
-              ssh ${TARGET_USER}@${HOST_K8S} '
+              ssh -o StrictHostKeyChecking=no ${TARGET_USER}@${HOST_K8S} 'mkdir -p ~/${APP_NAME}'
+              scp -o StrictHostKeyChecking=no Dockerfile index.js package.json ${TARGET_USER}@${HOST_K8S}:~/${APP_NAME}
+              ssh -o StrictHostKeyChecking=no ${TARGET_USER}@${HOST_K8S} '
                 cd ${APP_NAME} &&
                 docker build -t ${IMAGE_TAG} . &&
                 docker push ${IMAGE_TAG}
               '
-              scp k8s-deployment.yaml ${TARGET_USER}@${HOST_K8S}:~/${APP_NAME}
-              ssh ${TARGET_USER}@${HOST_K8S} '
+              scp -o StrictHostKeyChecking=no k8s-deployment.yaml ${TARGET_USER}@${HOST_K8S}:~/${APP_NAME}
+              ssh -o StrictHostKeyChecking=no ${TARGET_USER}@${HOST_K8S} '
                 cd ${APP_NAME} &&
                 kubectl apply -f k8s-deployment.yaml
               '
