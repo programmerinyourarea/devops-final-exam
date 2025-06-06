@@ -25,35 +25,27 @@ pipeline {
       sshagent([SSH_CRED]) {
         sh """
           ssh -o StrictHostKeyChecking=no ${TARGET_USER}@${HOST_TARGET} 'mkdir -p ~/${APP_NAME}'
-          scp -o StrictHostKeyChecking=no index.js package.json ${TARGET_USER}@${HOST_TARGET}:~/${APP_NAME}/
-        """
-
-        // Create and upload systemd service file
-        sh """
-          ssh -o StrictHostKeyChecking=no ${TARGET_USER}@${HOST_TARGET} 'cat > /etc/systemd/system/myapp.service <<EOF
-          [Unit]
-          Description=My Node.js App
-          After=network.target
-
-          [Service]
-          ExecStart=/usr/bin/node /home/${TARGET_USER}/${APP_NAME}/index.js
-          Restart=always
-          User=${TARGET_USER}
-          Environment=NODE_ENV=production
-          WorkingDirectory=/home/${TARGET_USER}/${APP_NAME}
-
-          [Install]
-          WantedBy=multi-user.target
-          EOF'
-        """
-
-        // Reload systemd, enable and start service
-        sh """
+          scp -o StrictHostKeyChecking=no index.js package.json ${TARGET_USER}@${HOST_TARGET}:~/${APP_NAME}
           ssh -o StrictHostKeyChecking=no ${TARGET_USER}@${HOST_TARGET} '
-            sudo systemctl daemon-reload &&
-            sudo systemctl enable myapp.service &&
-            sudo systemctl restart myapp.service
+            cd ${APP_NAME} &&
+            npm install
           '
+          ssh -o StrictHostKeyChecking=no ${TARGET_USER}@${HOST_TARGET} "echo '[Unit]
+Description=My Node.js App
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/node /home/${TARGET_USER}/${APP_NAME}/index.js
+Restart=always
+User=${TARGET_USER}
+Environment=NODE_ENV=production
+WorkingDirectory=/home/${TARGET_USER}/${APP_NAME}
+
+[Install]
+WantedBy=multi-user.target' | sudo tee /etc/systemd/system/myapp.service"
+          ssh -o StrictHostKeyChecking=no ${TARGET_USER}@${HOST_TARGET} 'sudo systemctl daemon-reload'
+          ssh -o StrictHostKeyChecking=no ${TARGET_USER}@${HOST_TARGET} 'sudo systemctl enable myapp.service'
+          ssh -o StrictHostKeyChecking=no ${TARGET_USER}@${HOST_TARGET} 'sudo systemctl restart myapp.service'
         """
       }
     }
