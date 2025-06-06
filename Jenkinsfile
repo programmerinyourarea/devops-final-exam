@@ -95,10 +95,10 @@ pipeline {
 
   post {
     success {
-      echo "✅ All deployments completed successfully."
+      echo "All deployments completed successfully."
     }
     failure {
-      echo "❌ One or more deployments failed."
+      echo "One or more deployments failed."
     }
   }
 }
