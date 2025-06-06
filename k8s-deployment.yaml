@@ -13,7 +13,7 @@ spec:
         app: myaapp
     spec:
       containers:
-      - name: myapp
+      - name: myapp-container
         image: ttl.sh/programmerinyourarea/myapp:2h
         ports:
         - containerPort: 4444
