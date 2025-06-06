@@ -1,10 +1,6 @@
 pipeline {
   agent any
 
-  tools {
-    nodejs 'NodeJS_22'
-  }
-
   environment {
     APP_NAME = 'node-sample-app'
     PORT = '4444'
@@ -75,15 +71,11 @@ pipeline {
           sshagent([SSH_CRED]) {
             sh """
               ssh ${TARGET_USER}@${HOST_K8S} 'mkdir -p ~/${APP_NAME}'
-              scp Dockerfile index.js package.json ${TARGET_USER}@${HOST_K8S}:~/${APP_NAME}
+              scp Dockerfile index.js package.json k8s-deployment.yaml ${TARGET_USER}@${HOST_K8S}:~/${APP_NAME}
               ssh ${TARGET_USER}@${HOST_K8S} '
                 cd ${APP_NAME} &&
                 docker build -t ${IMAGE_TAG} . &&
-                docker push ${IMAGE_TAG}
-              '
-              scp k8s-deployment.yaml ${TARGET_USER}@${HOST_K8S}:~/${APP_NAME}
-              ssh ${TARGET_USER}@${HOST_K8S} '
-                cd ${APP_NAME} &&
+                docker push ${IMAGE_TAG} &&
                 kubectl apply -f k8s-deployment.yaml
               '
             """
