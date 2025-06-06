@@ -4,13 +4,12 @@ pipeline {
   environment {
     APP_NAME = 'node-sample-app'
     PORT = '4444'
-    SSH_CRED = 'jenkins-ssh-key'
     TARGET_USER = 'laborant'
     HOST_TARGET = 'target'
     HOST_DOCKER = 'docker'
     HOST_K8S = 'k8s'
     IMAGE_TAG = 'ttl.sh/programmerinyourarea/myapp:2h'
-    REPO_URL = 'git@github.com:youruser/your-repo.git'
+    REPO_URL = 'https://github.com/programmerinyourarea/devops-final-exam.git'
   }
 
   stages {
@@ -18,11 +17,11 @@ pipeline {
     stage('Deploy to Bare-Metal Target') {
       steps {
         dir('target-deploy') {
-          git branch: 'target', url: "${REPO_URL}", credentialsId: SSH_CRED
+          git branch: 'target', url: "${REPO_URL}"
           sh 'npm install'
           sh 'npm test'
 
-          sshagent([SSH_CRED]) {
+          sshagent(['jenkins-ssh-key']) {
             sh """
               ssh ${TARGET_USER}@${HOST_TARGET} 'mkdir -p ~/${APP_NAME}'
               scp index.js package.json ${TARGET_USER}@${HOST_TARGET}:~/${APP_NAME}
@@ -41,11 +40,11 @@ pipeline {
     stage('Deploy to Docker Host') {
       steps {
         dir('docker-deploy') {
-          git branch: 'docker', url: "${REPO_URL}", credentialsId: SSH_CRED
+          git branch: 'docker', url: "${REPO_URL}"
           sh 'npm install'
           sh 'npm test'
 
-          sshagent([SSH_CRED]) {
+          sshagent(['jenkins-ssh-key']) {
             sh """
               ssh ${TARGET_USER}@${HOST_DOCKER} 'mkdir -p ~/${APP_NAME}'
               scp Dockerfile index.js package.json ${TARGET_USER}@${HOST_DOCKER}:~/${APP_NAME}
@@ -64,18 +63,22 @@ pipeline {
     stage('Deploy to Kubernetes') {
       steps {
         dir('k8s-deploy') {
-          git branch: 'k8s', url: "${REPO_URL}", credentialsId: SSH_CRED
+          git branch: 'k8s', url: "${REPO_URL}"
           sh 'npm install'
           sh 'npm test'
 
-          sshagent([SSH_CRED]) {
+          sshagent(['jenkins-ssh-key']) {
             sh """
               ssh ${TARGET_USER}@${HOST_K8S} 'mkdir -p ~/${APP_NAME}'
-              scp Dockerfile index.js package.json k8s-deployment.yaml ${TARGET_USER}@${HOST_K8S}:~/${APP_NAME}
+              scp Dockerfile index.js package.json ${TARGET_USER}@${HOST_K8S}:~/${APP_NAME}
               ssh ${TARGET_USER}@${HOST_K8S} '
                 cd ${APP_NAME} &&
                 docker build -t ${IMAGE_TAG} . &&
-                docker push ${IMAGE_TAG} &&
+                docker push ${IMAGE_TAG}
+              '
+              scp k8s-deployment.yaml ${TARGET_USER}@${HOST_K8S}:~/${APP_NAME}
+              ssh ${TARGET_USER}@${HOST_K8S} '
+                cd ${APP_NAME} &&
                 kubectl apply -f k8s-deployment.yaml
               '
             """
